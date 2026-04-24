@@ -3,9 +3,11 @@
 
   Storage: npc entry id → { npcName, entries[guidKey] = { sample, … } }.
   Each sample carries continent/zone; the spawn GUID is the table key, not a field on the row.
-  t = GetTime() (session time, seconds) rounded; not world z/elevation. Use displayId for model variant.
-  Auto: can store many samples per (entry id, same spawn GUID) up to a cap; oldest auto is dropped.
-  Manual: each /npct record removes prior manual row(s) for that GUID, then stores one new manual; auto rows stay.
+  t = GetTime() (session time, seconds) rounded; not world z/elevation.
+  Auto: spam guard — remembers the last N distinct spawn GUIDs auto-recorded; re-hovering one of those
+  skips a new auto row until it ages out of the ring. Still capped per GUID (MAX_AUTO_SAMPLES_PER_GUID).
+  Manual (/npct record): always writes; does not use the ring.
+  Manual detail: each /npct record removes prior manual row(s) for that GUID, then stores one new manual; auto rows stay.
 ]]
 
 local function ensureObsByEntry(entryId, gkey, npcName)
@@ -17,9 +19,6 @@ local function ensureObsByEntry(entryId, gkey, npcName)
     db.observationsByEntry[entryId] = { npcName = npcName, entries = {} }
   end
   local eb = db.observationsByEntry[entryId]
-  if type(eb.entries) ~= "table" then
-    eb.entries = {}
-  end
   eb.npcName = npcName
   if not eb.entries[gkey] then
     eb.entries[gkey] = {}
@@ -29,6 +28,9 @@ end
 
 --- At most this many **auto** samples per (template id, spawn GUID); extra autos drop the oldest by `t`.
 local MAX_AUTO_SAMPLES_PER_GUID = 64
+
+--- Auto only: skip new row if spawn GUID is still in this many most recently auto-recorded distinct GUIDs.
+local AUTO_GUID_RING_MAX = 5
 
 local function stripPreviousManualSamples(entries)
   if not entries or type(entries) ~= "table" then
@@ -74,16 +76,42 @@ end
 local function ensureAutoSettings()
   local db = NPCTrackerObservationDB
   if not db.autorecord then
-    db.autorecord = {
-      enabled = true,
-      mouseover = true,
-    }
+    db.autorecord = { enabled = true, mouseover = true }
   end
-  if db.autorecord.enabled == nil then
-    db.autorecord.enabled = true
+  if not db.autoRecordLastFiveGuids then
+    db.autoRecordLastFiveGuids = {}
   end
-  if db.autorecord.mouseover == nil then
-    db.autorecord.mouseover = true
+end
+
+local function isGuidInAutoRing(gkey)
+  if not gkey or gkey == "" then
+    return false
+  end
+  ensureAutoSettings()
+  local list = NPCTrackerObservationDB.autoRecordLastFiveGuids
+  for i = 1, table.getn(list) do
+    if list[i] == gkey then
+      return true
+    end
+  end
+  return false
+end
+
+--- MRU at end; evict from front when over AUTO_GUID_RING_MAX. Used only after a successful **auto** record.
+local function touchGuidAutoRing(gkey)
+  if not gkey or gkey == "" then
+    return
+  end
+  ensureAutoSettings()
+  local list = NPCTrackerObservationDB.autoRecordLastFiveGuids
+  for i = table.getn(list), 1, -1 do
+    if list[i] == gkey then
+      table.remove(list, i)
+    end
+  end
+  table.insert(list, gkey)
+  while table.getn(list) > AUTO_GUID_RING_MAX do
+    table.remove(list, 1)
   end
 end
 
@@ -151,19 +179,9 @@ local function buildEntry(unit, sourceTag, subzoneHint)
   if subzoneHint then
     e.subzone = subzoneHint
   end
-  local did = NPCTracker_TryCreatureDisplayId(unit)
-  if did then
-    e.displayId = did
-  end
-  if UnitCreatureType then
-    local ct = UnitCreatureType(unit)
-    if type(ct) == "number" and ct >= 0 then
-      e.creatureType = ct
-    end
-  end
   if UnitClassification then
     local cl = UnitClassification(unit)
-    if cl and cl ~= "" then
+    if type(cl) == "string" and cl ~= "" then
       e.classification = cl
     end
   end
@@ -212,6 +230,11 @@ function NPCTracker_TryRecordUnit(unit, force, sourceTag)
     return false, "no_creature_guid"
   end
 
+  -- Auto: do not spam rows when mouseover/target fires repeatedly for the same spawn GUID.
+  if not force and isGuidInAutoRing(gkey) then
+    return false, "guid_ring"
+  end
+
   local entries = ensureObsByEntry(entryId, gkey, name)
   if force and (sourceTag == "manual" or sourceTag == "rec") then
     stripPreviousManualSamples(entries)
@@ -223,6 +246,10 @@ function NPCTracker_TryRecordUnit(unit, force, sourceTag)
   end
   entry.guid = nil
   table.insert(entries, entry)
+
+  if not force then
+    touchGuidAutoRing(gkey)
+  end
 
   if NPCTracker_Script_OnUnitRecorded then
     NPCTracker_Script_OnUnitRecorded(unit)

@@ -37,15 +37,15 @@ NPCTrackerObservationDB = {
             y = 71.44,
             reaction = 7,
             level = 50,
-            displayId = 1965,
             classification = "normal",
-            creatureType = 7,
           },
         },
       },
     },
   },
   autorecord = { enabled = true, mouseover = true },
+  -- Last 5 spawn GUIDs that got an **auto** sample (MRU); auto skips if current GUID is still listed.
+  autoRecordLastFiveGuids = { "0xF1300021DE01375A" },
 }
 
 NPCTrackerMapSettings = { }  -- zone/npc panel toggles, panel position; see NPCTracker-Data.md

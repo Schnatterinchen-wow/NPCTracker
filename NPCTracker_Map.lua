@@ -13,7 +13,6 @@ local function defaultMapSettings()
   }
 end
 
---- SavedVariables can be restored to nil or a partial table after this file runs; ensure structure before use.
 function MAP.EnsureMapSettings()
   if type(NPCTrackerMapSettings) ~= "table" then
     NPCTrackerMapSettings = defaultMapSettings()
@@ -100,22 +99,19 @@ local function zoneKeysForBucket(cont, mapZone)
     table.insert(keys, z)
   end
   add(mapZone)
-  local byEntry = NPCTrackerObservationDB and NPCTrackerObservationDB.observationsByEntry
-  if byEntry and type(byEntry) == "table" then
-    for _, entryBlock in pairs(byEntry) do
-      if type(entryBlock) == "table" and type(entryBlock.entries) == "table" then
-        for _, arr in pairs(entryBlock.entries) do
-          if type(arr) == "table" then
-            for i = 1, table.getn(arr) do
-              local e = arr[i]
-              if
-                type(e) == "table"
-                and (e.continent or cont) == cont
-                and e.zone
-                and NPCTracker_ZoneBucketMatches(mapZone, e.zone)
-              then
-                add(e.zone)
-              end
+  for _, entryBlock in pairs(NPCTrackerObservationDB.observationsByEntry) do
+    if type(entryBlock) == "table" and type(entryBlock.entries) == "table" then
+      for _, arr in pairs(entryBlock.entries) do
+        if type(arr) == "table" then
+          for i = 1, table.getn(arr) do
+            local e = arr[i]
+            if
+              type(e) == "table"
+              and e.continent == cont
+              and e.zone
+              and NPCTracker_ZoneBucketMatches(mapZone, e.zone)
+            then
+              add(e.zone)
             end
           end
         end
@@ -232,8 +228,8 @@ local function drawObservationPins(cont, zone, npc, data)
       if e.zone then
         sub = sub .. " @ " .. e.zone
       end
-      if e.displayId then
-        sub = sub .. " | display " .. tostring(e.displayId)
+      if e.classification then
+        sub = sub .. " | " .. tostring(e.classification)
       end
       showPin(e.x, e.y, COLOR_OBS[1], COLOR_OBS[2], COLOR_OBS[3], npc, sub)
     end
@@ -335,7 +331,7 @@ function MAP.PrintChecklist()
     "/npct — toggle the panel; use the zone master toggle and per-NPC boxes.",
     "Gold pins = your observations (zone label in tooltip when stored per sample). SuperWoW creature GUID required.",
     "/npct record (macro) — saves target or mouseover (creature 0xF130… GUID only).",
-    "/npct autorecord — on/off, mouseover on/off (one auto sample per spawn GUID).",
+    "/npct autorecord — on/off, mouseover on/off (auto skips re-hover of the same spawn GUID while it stays in a 5-GUID MRU ring; /npct record always saves).",
     "New or unlisted Turtle zones: continent falls back to the map or “Unknown”; your samples are still saved.",
     "Caves/interiors: when the minimap subzone differs from the zone name, storage uses “Zone / Subzone”.",
     "Bad coordinates (0,0 or outside 0–100) are not saved; run /npct prune to remove invalid samples from saved data.",

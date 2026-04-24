@@ -34,32 +34,11 @@ local function appendUniqueCap(dst, id, maxn)
   table.insert(dst, id)
 end
 
-local function ensureScriptDb()
-  if type(NPCTrackerScriptDB) ~= "table" then
-    NPCTrackerScriptDB = { byEntry = {} }
-  end
-  if type(NPCTrackerScriptDB.byEntry) ~= "table" then
-    NPCTrackerScriptDB.byEntry = {}
-  end
-end
-
 local function ensureEntryBlock(entry)
-  ensureScriptDb()
   if not NPCTrackerScriptDB.byEntry[entry] then
     NPCTrackerScriptDB.byEntry[entry] = { spells = {}, auras = {} }
   end
-  local block = NPCTrackerScriptDB.byEntry[entry]
-  if type(block) ~= "table" then
-    block = { spells = {}, auras = {} }
-    NPCTrackerScriptDB.byEntry[entry] = block
-  end
-  if type(block.spells) ~= "table" then
-    block.spells = {}
-  end
-  if type(block.auras) ~= "table" then
-    block.auras = {}
-  end
-  return block
+  return NPCTrackerScriptDB.byEntry[entry]
 end
 
 local function addSpell(entry, spellId)
@@ -155,15 +134,12 @@ function NPCTracker_Script_OnUnitRecorded(unit)
 end
 
 local ef = CreateFrame("Frame")
-ef:RegisterEvent("ADDON_LOADED")
 if SUPERWOW_VERSION then
   ef:RegisterEvent("UNIT_CASTEVENT")
 end
 
 ef:SetScript("OnEvent", function()
-  if event == "ADDON_LOADED" and arg1 == "NPCTracker" then
-    ensureScriptDb()
-  elseif event == "UNIT_CASTEVENT" and SUPERWOW_VERSION then
+  if event == "UNIT_CASTEVENT" and SUPERWOW_VERSION then
     local caster = arg1
     local spellId = arg4
     NPCTracker_Script_AddSpellForCasterGuid(caster, spellId)

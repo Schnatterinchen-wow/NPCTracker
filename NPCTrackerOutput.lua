@@ -19,15 +19,14 @@ NPCTrackerObservationDB = {
             y = 71.44,
             reaction = 7,
             level = 50,
-            displayId = 1965,
             classification = "normal",
-            creatureType = 7,
           },
         },
       },
     },
   },
   autorecord = { enabled = true, mouseover = true },
+  autoRecordLastFiveGuids = {},
 }
 
 NPCTrackerScriptDB = {

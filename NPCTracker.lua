@@ -3,8 +3,10 @@
 ]]
 
 NPCTrackerObservationDB = NPCTrackerObservationDB or {
-  -- [npcEntryId] = { npcName, entries = { [guidKey] = { { source, continent, zone, ... }, ... } } }
+  -- [npcEntryId] = { npcName, entries = { [guidKey] = { samples } } }
   observationsByEntry = {},
+  autorecord = { enabled = true, mouseover = true },
+  autoRecordLastFiveGuids = {},
 }
 
 -- Declared in .toc as SavedVariables; init here so it exists before NPCTracker_Map.lua loads.
@@ -99,24 +101,6 @@ function NPCTracker_RoundCoord2(n)
   return math.floor(n * 100 + 0.5) / 100
 end
 
---- @return number|nil  Model display id if `_G[GetCreatureDisplay|GetUnitDisplay|GetCreatureDisplayId]` exists (SuperWoW/Turtle), else nil.
-function NPCTracker_TryCreatureDisplayId(unit)
-  if not unit or not UnitExists(unit) or UnitIsPlayer(unit) then
-    return nil
-  end
-  local tryNames = { "GetCreatureDisplay", "GetUnitDisplay", "GetCreatureDisplayId" }
-  for i = 1, 3 do
-    local f = _G and _G[tryNames[i]]
-    if type(f) == "function" then
-      local ok, id = pcall(f, unit)
-      if ok and type(id) == "number" and id > 0 then
-        return math.floor(id)
-      end
-    end
-  end
-  return nil
-end
-
 --- Map % 0–100; reject nil, NaN, (0,0), and out-of-range.
 function NPCTracker_IsValidMapCoord(x, y)
   if x == nil or y == nil then
@@ -154,7 +138,7 @@ function NPCTracker_ZoneBucketMatches(mapZone, storedZone)
   return false
 end
 
---- Drop observation rows not taken in this map zone (per-entry continent/zone when present).
+--- Drop observation rows not taken in this map zone.
 function NPCTracker_FilterObservationForMapZone(block, continent, mapZone)
   if not block or not block.entries then
     return block
@@ -163,7 +147,7 @@ function NPCTracker_FilterObservationForMapZone(block, continent, mapZone)
   for _, e in ipairs(block.entries) do
     if type(e) == "table" then
       local ok = true
-      if e.continent and e.continent ~= continent then
+      if e.continent ~= continent then
         ok = false
       end
       if ok and e.zone and not NPCTracker_ZoneBucketMatches(mapZone, e.zone) then
@@ -199,25 +183,20 @@ end
 
 --- Merge observations (by npc entry × instance GUID buckets) for one NPC name + map zone.
 local function mergeObservationsByEntryForName(continent, zone, npcName, into)
-  local byEntry = NPCTrackerObservationDB.observationsByEntry
-  if not byEntry or type(byEntry) ~= "table" then
-    return into
-  end
-  for _, entryBlock in pairs(byEntry) do
+  for _, entryBlock in pairs(NPCTrackerObservationDB.observationsByEntry) do
     if type(entryBlock) == "table" and entryBlock.npcName == npcName and type(entryBlock.entries) == "table" then
       local samples = {}
       for _, arr in pairs(entryBlock.entries) do
         if type(arr) == "table" then
           for i = 1, table.getn(arr) do
             local e = arr[i]
-            if type(e) == "table" and e.zone and NPCTracker_ZoneBucketMatches(zone, e.zone) then
-              local ec = e.continent
-              if not ec or ec == "" then
-                ec = continent
-              end
-              if ec == continent then
-                table.insert(samples, e)
-              end
+            if
+              type(e) == "table"
+              and e.continent == continent
+              and e.zone
+              and NPCTracker_ZoneBucketMatches(zone, e.zone)
+            then
+              table.insert(samples, e)
             end
           end
         end
@@ -245,33 +224,30 @@ end
 --- All NPC names observed for this map zone (from observationsByEntry).
 function NPCTracker_ListNPCNamesForZone(continent, zone)
   local seen = {}
-  local byEntry = NPCTrackerObservationDB.observationsByEntry
-  if byEntry and type(byEntry) == "table" then
-    for _, entryBlock in pairs(byEntry) do
-      if type(entryBlock) == "table" and entryBlock.npcName and type(entryBlock.entries) == "table" then
-        local hit = false
-        for _, arr in pairs(entryBlock.entries) do
-          if type(arr) == "table" then
-            for i = 1, table.getn(arr) do
-              local e = arr[i]
-              if
-                type(e) == "table"
-                and (e.continent or continent) == continent
-                and e.zone
-                and NPCTracker_ZoneBucketMatches(zone, e.zone)
-              then
-                hit = true
-                break
-              end
+  for _, entryBlock in pairs(NPCTrackerObservationDB.observationsByEntry) do
+    if type(entryBlock) == "table" and entryBlock.npcName and type(entryBlock.entries) == "table" then
+      local hit = false
+      for _, arr in pairs(entryBlock.entries) do
+        if type(arr) == "table" then
+          for i = 1, table.getn(arr) do
+            local e = arr[i]
+            if
+              type(e) == "table"
+              and e.continent == continent
+              and e.zone
+              and NPCTracker_ZoneBucketMatches(zone, e.zone)
+            then
+              hit = true
+              break
             end
-          end
-          if hit then
-            break
           end
         end
         if hit then
-          seen[entryBlock.npcName] = true
+          break
         end
+      end
+      if hit then
+        seen[entryBlock.npcName] = true
       end
     end
   end
@@ -286,9 +262,6 @@ end
 --- Remove invalid coordinate entries from SavedVariables (called from /npct prune).
 function NPCTracker_PruneInvalidObservations()
   local db = NPCTrackerObservationDB
-  if not db then
-    return 0
-  end
   local removed = 0
   local function pruneEntries(entries)
     local kept = {}
@@ -306,16 +279,13 @@ function NPCTracker_PruneInvalidObservations()
     end
     return kept
   end
-  local byEntry = db.observationsByEntry
-  if type(byEntry) == "table" then
-    for _, entryBlock in pairs(byEntry) do
-      if type(entryBlock) == "table" and type(entryBlock.entries) == "table" then
-        for gkey, arr in pairs(entryBlock.entries) do
-          if type(arr) == "table" then
-            entryBlock.entries[gkey] = pruneEntries(arr)
-            if table.getn(entryBlock.entries[gkey]) == 0 then
-              entryBlock.entries[gkey] = nil
-            end
+  for _, entryBlock in pairs(db.observationsByEntry) do
+    if type(entryBlock) == "table" and type(entryBlock.entries) == "table" then
+      for gkey, arr in pairs(entryBlock.entries) do
+        if type(arr) == "table" then
+          entryBlock.entries[gkey] = pruneEntries(arr)
+          if table.getn(entryBlock.entries[gkey]) == 0 then
+            entryBlock.entries[gkey] = nil
           end
         end
       end

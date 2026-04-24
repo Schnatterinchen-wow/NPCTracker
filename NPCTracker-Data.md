@@ -2,7 +2,7 @@
 
 ## SavedVariables
 
-One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below).
+One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below). Expect the shapes documented here; there is no migration from older layouts—reset or edit the file if it drifts.
 
 | Table | Role |
 |-------|------|
@@ -15,6 +15,7 @@ One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below).
 | What | Limit |
 |------|--------|
 | Observations per **(entry id, spawn GUID string)** | Up to **64** rows; auto adds until full (old auto rows can be dropped; manual rows replace other manuals only for that GUID). Tuned in `NPCTracker_Record.lua` (`MAX_AUTO_SAMPLES_PER_GUID`). |
+| **Auto** re-hover / re-target spam | **`autoRecordLastFiveGuids`** — MRU list of up to **5** normalized spawn GUID keys. If the current unit’s GUID is already in this list, **auto** does not append another row (silent). A GUID leaves the list after **5 other distinct** GUIDs have been auto-recorded. **`/npct record` ignores this** and does not update the ring. `AUTO_GUID_RING_MAX` in `NPCTracker_Record.lua`. |
 | `spells` per entry id in `NPCTrackerScriptDB` | **20** first-seen unique cast spell ids (then further ids ignored). `NPCTracker_Script.lua` `MAX_SPELLS`. |
 | `auras` per entry id | **8** first-seen unique aura spell ids. `MAX_AURAS`. |
 
@@ -37,9 +38,7 @@ One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below).
 | `source` | `"auto"` or `"manual"`. |
 | `level` | `UnitLevel` |
 | `reaction` | `UnitReaction` vs player |
-| `displayId` | Model display id, if a client function exists (`GetCreatureDisplay` / `GetUnitDisplay` / `GetCreatureDisplayId`); else omitted. |
-| `creatureType` | `UnitCreatureType` (number) |
-| `classification` | `UnitClassification` (string, e.g. `normal`, `elite`) |
+| `classification` | `UnitClassification` when present: `"normal"`, `"elite"`, `"rare"`, `"rareelite"`, `"worldboss"`, `"trivial"`, `"minus"`, etc. Omitted if the API is missing or returns empty. |
 | (no `guid` on row) | Instance identity is the **key** in `entries`. |
 
 `guid` is stripped from the row before save; the **spawn key** in `entries[guidKey]` is the GUID string.
@@ -61,6 +60,13 @@ One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below).
 
 - `enabled` — auto samples on.
 - `mouseover` — also sample on mouseover when enabled.
+
+## `autoRecordLastFiveGuids` (inside `NPCTrackerObservationDB`)
+
+- Array of up to **5** strings: normalized creature **GUID** keys (same form as keys under `entries`), **most recent last**.
+- After each successful **auto** record, the spawn GUID for that sample is moved to the MRU end; the list is trimmed from the front.
+- **Auto** attempts whose GUID is **already in the list** return without writing (no chat message).
+- **Manual** `/npct record` does **not** read or write this list.
 
 ## GUID → npc template id (entry id)
 
