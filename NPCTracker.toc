@@ -1,0 +1,11 @@
+## Interface: 11200
+## Title: NPCTracker |cffcccccc[TurtleWoW]|r
+## Notes: SuperWoW — NPC locations by template id×GUID and per-template spell/aura capture.
+## Version: 0.6.6
+## SavedVariables: NPCTrackerObservationDB, NPCTrackerMapSettings, NPCTrackerScriptDB
+
+zones_registry.lua
+NPCTracker.lua
+NPCTracker_Map.lua
+NPCTracker_Record.lua
+NPCTracker_Script.lua

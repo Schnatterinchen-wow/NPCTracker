@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "pfquest_merge": {
+    "base_pfQuest": true,
+    "turtle_patch": true
+  },
+  "turtle_unit_ids_in_patch": 10777,
+  "counts": {
+    "questie_zones": 46,
+    "pfquest_zones": 105
+  }
+}
