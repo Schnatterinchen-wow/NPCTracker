@@ -1,6 +1,8 @@
 # NPCTracker (Turtle WoW)
 ## Schnatterinchen-wow on Github
 In-game **NPC location and script capture** for **Turtle WoW 1.12 with SuperWoW** (creature GUIDs `0xF130…`). Export SavedVariables for **external tools** or the Turtle WoW database when you want to cross-check ids.
+
+
 Tracked NPC data is in the following folder:
 \WoW\WTF\Account\ACCOUNT\SavedVariables\NPCTracker.lua
 
