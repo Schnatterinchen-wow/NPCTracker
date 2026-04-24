@@ -17,7 +17,7 @@ NPCTrackerMapSettings = NPCTrackerMapSettings or {
 
 -- Spells/auras keyed by creature template id only (no per-spawn GUID in this table).
 NPCTrackerScriptDB = NPCTrackerScriptDB or {
-  -- [npcEntry] = { spells = { id, ... max 5 }, auras = { id, ... max 3 } }
+  -- [npcEntry] = { spells = { id, ... max 20 }, auras = { id, ... max 8 } }
   byEntry = {},
 }
 
@@ -97,6 +97,24 @@ function NPCTracker_RoundCoord2(n)
     return nil
   end
   return math.floor(n * 100 + 0.5) / 100
+end
+
+--- @return number|nil  Model display id if `_G[GetCreatureDisplay|GetUnitDisplay|GetCreatureDisplayId]` exists (SuperWoW/Turtle), else nil.
+function NPCTracker_TryCreatureDisplayId(unit)
+  if not unit or not UnitExists(unit) or UnitIsPlayer(unit) then
+    return nil
+  end
+  local tryNames = { "GetCreatureDisplay", "GetUnitDisplay", "GetCreatureDisplayId" }
+  for i = 1, 3 do
+    local f = _G and _G[tryNames[i]]
+    if type(f) == "function" then
+      local ok, id = pcall(f, unit)
+      if ok and type(id) == "number" and id > 0 then
+        return math.floor(id)
+      end
+    end
+  end
+  return nil
 end
 
 --- Map % 0–100; reject nil, NaN, (0,0), and out-of-range.
@@ -278,6 +296,9 @@ function NPCTracker_PruneInvalidObservations()
       if type(e) == "table" and NPCTracker_IsValidMapCoord(e.x, e.y) then
         e.x = NPCTracker_RoundCoord2(e.x)
         e.y = NPCTracker_RoundCoord2(e.y)
+        if e.t and type(e.t) == "number" then
+          e.t = NPCTracker_RoundCoord2(e.t)
+        end
         table.insert(kept, e)
       else
         removed = removed + 1

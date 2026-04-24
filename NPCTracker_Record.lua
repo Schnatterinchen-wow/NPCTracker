@@ -2,9 +2,10 @@
   Observations → NPCTrackerObservationDB (SuperWoW only)
 
   Storage: npc entry id → { npcName, entries[guidKey] = { sample, … } }.
-  Each sample carries continent/zone; guid is not stored on the row (key is the GUID).
-  Auto-record: at most one sample per (entry id, instance GUID); new GUID = new pin.
-  Manual (/npct record) always appends for that spawn.
+  Each sample carries continent/zone; the spawn GUID is the table key, not a field on the row.
+  t = GetTime() (session time, seconds) rounded; not world z/elevation. Use displayId for model variant.
+  Auto: can store many samples per (entry id, same spawn GUID) up to a cap; oldest auto is dropped.
+  Manual: each /npct record removes prior manual row(s) for that GUID, then stores one new manual; auto rows stay.
 ]]
 
 local function ensureObsByEntry(entryId, gkey, npcName)
@@ -24,6 +25,50 @@ local function ensureObsByEntry(entryId, gkey, npcName)
     eb.entries[gkey] = {}
   end
   return eb.entries[gkey]
+end
+
+--- At most this many **auto** samples per (template id, spawn GUID); extra autos drop the oldest by `t`.
+local MAX_AUTO_SAMPLES_PER_GUID = 64
+
+local function stripPreviousManualSamples(entries)
+  if not entries or type(entries) ~= "table" then
+    return
+  end
+  local kept = {}
+  for i = 1, table.getn(entries) do
+    local e = entries[i]
+    if type(e) == "table" and e.source ~= "manual" then
+      table.insert(kept, e)
+    end
+  end
+  for i = table.getn(entries), 1, -1 do
+    table.remove(entries, i)
+  end
+  for i = 1, table.getn(kept) do
+    table.insert(entries, kept[i])
+  end
+end
+
+--- Return true if one oldest `source == "auto"` row was removed to make room.
+local function tryDropOldestAutoSample(entries)
+  if not entries or type(entries) ~= "table" then
+    return false
+  end
+  local bestI, bestT
+  for i = 1, table.getn(entries) do
+    local e = entries[i]
+    if type(e) == "table" and e.source == "auto" and type(e.t) == "number" then
+      if not bestT or e.t < bestT then
+        bestT = e.t
+        bestI = i
+      end
+    end
+  end
+  if not bestI then
+    return false
+  end
+  table.remove(entries, bestI)
+  return true
 end
 
 local function ensureAutoSettings()
@@ -100,11 +145,27 @@ local function buildEntry(unit, sourceTag, subzoneHint)
     y = fy,
     level = lvl,
     reaction = react,
-    t = GetTime(),
+    t = NPCTracker_RoundCoord2(GetTime()),
     source = sourceTag or "auto",
   }
   if subzoneHint then
     e.subzone = subzoneHint
+  end
+  local did = NPCTracker_TryCreatureDisplayId(unit)
+  if did then
+    e.displayId = did
+  end
+  if UnitCreatureType then
+    local ct = UnitCreatureType(unit)
+    if type(ct) == "number" and ct >= 0 then
+      e.creatureType = ct
+    end
+  end
+  if UnitClassification then
+    local cl = UnitClassification(unit)
+    if cl and cl ~= "" then
+      e.classification = cl
+    end
   end
   local guid = NPCTracker_UnitGuid(unit)
   if guid then
@@ -151,14 +212,15 @@ function NPCTracker_TryRecordUnit(unit, force, sourceTag)
     return false, "no_creature_guid"
   end
 
-  if not force then
-    local blk = NPCTrackerObservationDB.observationsByEntry and NPCTrackerObservationDB.observationsByEntry[entryId]
-    local list = blk and blk.entries and blk.entries[gkey]
-    if list and table.getn(list) >= 1 then
-      return false, "duplicate_instance"
+  local entries = ensureObsByEntry(entryId, gkey, name)
+  if force and (sourceTag == "manual" or sourceTag == "rec") then
+    stripPreviousManualSamples(entries)
+  end
+  while table.getn(entries) >= MAX_AUTO_SAMPLES_PER_GUID do
+    if not tryDropOldestAutoSample(entries) then
+      return false, "auto_cap"
     end
   end
-  local entries = ensureObsByEntry(entryId, gkey, name)
   entry.guid = nil
   table.insert(entries, entry)
 

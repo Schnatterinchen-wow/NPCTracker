@@ -226,8 +226,14 @@ local function drawObservationPins(cont, zone, npc, data)
   for _, e in pairs(data.entries) do
     if type(e) == "table" and e.x and e.y and NPCTracker_IsValidMapCoord(e.x, e.y) then
       local sub = "Observation"
+      if e.source then
+        sub = sub .. " (" .. tostring(e.source) .. ")"
+      end
       if e.zone then
         sub = sub .. " @ " .. e.zone
+      end
+      if e.displayId then
+        sub = sub .. " | display " .. tostring(e.displayId)
       end
       showPin(e.x, e.y, COLOR_OBS[1], COLOR_OBS[2], COLOR_OBS[3], npc, sub)
     end

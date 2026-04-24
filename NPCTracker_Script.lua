@@ -3,12 +3,14 @@
 
   Locations stay in NPCTrackerObservationDB.observationsByEntry; this table is script metadata only.
 
-  Spells: up to 5 unique spell ids from UNIT_CASTEVENT (SuperWoW), merged across all seen spawns of that entry.
-  Auras: up to 3 unique aura spell ids from UnitBuff/UnitDebuff when a unit is recorded.
+  Spells: unique spell ids from UNIT_CASTEVENT (SuperWoW), merged across all spawns; cap keeps SavedVariables size sane.
+  Once full, further distinct spell ids are ignored (order is first-seen, not LRU evict). Boss scripts may still miss rare one-offs.
+  Auras: snapshot from UnitBuff/UnitDebuff on record; first-seen up to the aura cap.
 ]]
 
-local MAX_SPELLS = 5
-local MAX_AURAS = 3
+-- Defaults: enough headroom for boss rotations + extras; lower if you need tighter SV size.
+local MAX_SPELLS = 20
+local MAX_AURAS = 8
 
 local function listContains(t, id)
   for i = 1, table.getn(t) do
