@@ -1,10 +1,20 @@
-# NPCTracker (Turtle WoW)
+# NPCTracker (Vanilla WoW)
 ## Schnatterinchen-wow on Github
-In-game **NPC location and script capture** for **Turtle WoW 1.12 with SuperWoW** (creature GUIDs `0xF130…`). Export SavedVariables for **external tools** or the Turtle WoW database when you want to cross-check ids.
+In-game **NPC location and script capture** for **Vanilla WoW 1.12 with SuperWoW** (creature GUIDs `0xF130…`). Export SavedVariables for **external tools** or the Wowhead WoW database or a different database when you want to cross-check ids.
 
 
 Tracked NPC data is in the following folder:
 \WoW\WTF\Account\ACCOUNT\SavedVariables\NPCTracker.lua
+
+This is very much a work in progress, NPC locations and spell tracking already works. 
+Tried to implement a sort of map tracking to visualize where data in the zone was already collected but this does not work as reliantly as expected. 
+in the end this relies on getting the location data back to a centralized person and turned into actual useable data for serverside spawn locations and so on.
+
+Put folder into Addon folder, have superwow installed already for the client, ingame use "/npct" for a popup. tracking is automatic, location is the position of the character so going closer to enemies would be ideal. There is also a manual trigger to collect data again for that npc/mob with command "/npct rec"
+
+Feedback is welcome!
+
+
 
 ## Goals
 
@@ -111,15 +121,15 @@ Game clients only persist **Lua tables** via SavedVariables (no arbitrary SQL/fi
 
 With **SuperWoW**, `UnitExists` / `UnitGUID` expose a unit GUID; storage keys samples by that GUID string (e.g. `"0xF130000507013750"`). Rows under `observationsByEntry` usually omit a duplicate **`guid`** field because the spawn key is the GUID.
 
-On Turtle WoW’s 1.12-style packing, that value is **not** the same number as the wiki/database **NPC id**, but the **template id (creature entry)** is **embedded** in the middle of the hex:
+On Vanilla WoW’s 1.12-style packing, that value is **not** the same number as the wiki/database **NPC id**, but the **template id (creature entry)** is **embedded** in the middle of the hex:
 
 | Piece (after the `0x`) | Role |
 |------------------------|------|
 | First **4** hex digits (`F130`) | High-GUID / object class for units (constant for normal creatures). |
-| Next **6** hex digits | **Creature template id** — same integer as **`?npc=`** on sites like [Turtle WoW Database](https://database.turtlecraft.gg/) (e.g. `000507` → **1287**, `002E5B` → **11867**). |
+| Next **6** hex digits | **Creature template id** — same integer as **`?npc=`** on database sites (e.g. `000507` → **1287**, `002E5B` → **11867**). |
 | Last **6** hex digits | Instance / spawn counter (identifies *this* spawn in the world; **not** map coordinates). |
 
-**Parsing (for export tools or scripts):** strip the `0x`, take hex positions 5–10 (six characters), interpret as a hexadecimal integer — that decimal value is the **database NPC / entry id**. Example: `"0xF130000507013750"` → middle `000507` → **1287** → `https://database.turtlecraft.gg/?npc=1287`.
+**Parsing (for export tools or scripts):** strip the `0x`, take hex positions 5–10 (six characters), interpret as a hexadecimal integer — that decimal value is the **database NPC / entry id**. Example: `"0xF130000507013750"` → middle `000507` → **1287** → `[Wowhead](https://www.wowhead.com/npc=1287) or /?npc=1287`for other database websites.
 
 **Use this relation for:** joining observations to **`creature_template`-style ids**, stable links to external DB pages, and disambiguating duplicate NPC names — without treating the full 64-bit GUID as if it were the entry id.
 
