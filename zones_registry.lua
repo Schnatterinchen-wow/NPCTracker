@@ -8,7 +8,12 @@
 
 local ROWS = {
   { "Patch 1.15.0", "N/A", "Alah'Thalas", "Completely new zone (Silvermoon Remnant/High elf faction capital)", "Alliance", "Eastern Kingdoms" },
-  { "Vanilla", "N/A", "Stormwind City", "Stormwind Harbor, Little Silvermoon, Davenburg", "Alliance", "Eastern Kingdoms" },
+  { "Vanilla", "N/A", "Stormwind City", "Capital; Elwynn Forest", "Alliance", "Eastern Kingdoms" },
+  { "Vanilla", "N/A", "Ironforge", "Capital; Dun Morogh", "Alliance", "Eastern Kingdoms" },
+  { "Vanilla", "N/A", "Undercity", "Capital; Tirisfal Glades", "Horde", "Eastern Kingdoms" },
+  { "Vanilla", "N/A", "Orgrimmar", "Capital; Durotar", "Horde", "Kalimdor" },
+  { "Vanilla", "N/A", "Thunder Bluff", "Capital; Mulgore", "Horde", "Kalimdor" },
+  { "Vanilla", "N/A", "Darnassus", "Capital; Teldrassil", "Alliance", "Kalimdor" },
   { "Patch 1.17.1", "1-10", "Blackstone Island", "Completely new zone (Durotar Labor Union/Goblin starting zone)", "Horde", "Kalimdor" },
   { "Vanilla", "1-10", "Dun Morogh", "Frostmane Hollow, Gnomeregan Reclamation Facility (lvl 10-38, Gnomeregan Exiles faction capital), Ironforge Airfield, Rugford's Mountain Rest", "Alliance", "Eastern Kingdoms" },
   { "Vanilla", "1-10", "Durotar", "Sparkwater Port (lvl 1-36, Durotar Labor Union/Goblin faction capital)", "Horde", "Kalimdor" },

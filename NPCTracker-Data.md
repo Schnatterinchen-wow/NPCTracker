@@ -32,12 +32,16 @@ One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below). 
 |-------|---------|
 | `t` | `GetTime()` **session** time in **seconds** (not ms), 2 decimal places. Not world height. |
 | `x`, `y` | **Player** world-map position, **0–100** %, 2 dp (`GetPlayerMapPosition` at record). |
-| `continent` | String, e.g. `Eastern Kingdoms`, `Kalimdor`, or `Unknown`. |
+| `continent` | String, e.g. `Eastern Kingdoms`, `Kalimdor`, or `Unknown`. In **instances**, if `GetRealZoneText()` matches `dungeons_registry.lua` (`twow-dungeons`), continent is derived from the dungeon’s **associated zone** (`TWOW_ContinentForAssociatedZone`). |
 | `zone` | Zone bucket: `GetRealZoneText()`, with ` " / " ` + `GetMinimapZoneText()` if subzone differs. |
+| `dungeon` | Set when the instance name matched the dungeon list: registry **dungeon name**. |
+| `parentZone` | Set with `dungeon`: **associated zone** (entrance / continent reference). |
 | `subzone` | Minimap subzone when it differed from real zone; else omitted. |
 | `source` | `"auto"` or `"manual"`. |
 | `level` | `UnitLevel` |
 | `reaction` | `UnitReaction` vs player |
+| `displayId` | Model display id when a client API returns it; else omitted. |
+| `creatureType` | `UnitCreatureType` (number) when present. |
 | `classification` | `UnitClassification` when present: `"normal"`, `"elite"`, `"rare"`, `"rareelite"`, `"worldboss"`, `"trivial"`, `"minus"`, etc. Omitted if the API is missing or returns empty. |
 | (no `guid` on row) | Instance identity is the **key** in `entries`. |
 
@@ -52,7 +56,7 @@ One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below). 
 
 ## `NPCTrackerMapSettings` (brief)
 
-- `zoneEnabled[continent][zone]` — show pins for that map zone; `false` = off.
+- `zoneEnabled[continent][zone]` — pins only when **value is `true`**. Default is **off** (nil/false) until you enable “Show pins for this zone” for that map.
 - `npcEnabled[continent][zone][name]` — per-NPC; `false` = hidden.
 - `panelPoint` — panel anchor for UI (if set).
 
@@ -75,3 +79,9 @@ One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below). 
 - **Web (npc):** `https://www.wowhead.com/npc=<entry>` (replace `<entry>` with the decimal id). Other DBs: same `npc=` or `?npc=<entry>` as their URL scheme.
 - The GUID still contains **per-spawn** bits (tail of hex); the **key** in `entries` is the full string so two spawns of the same entry stay separate.
 - **Spells** in `NPCTrackerScriptDB` use **spell** ids, not npc ids: `?spell=<id>` on Wowhead and similar.
+
+## Dungeon list (`dungeons_registry.lua`)
+
+- Source: `addon/twow-dungeons.txt` (embedded as `DUNGEON_ROWS`). Columns: release, level range, dungeon name, associated zone, bosses note, quests note.
+- **Continent** for a sample in a matching instance = continent of **associated zone** (`TWOW_ContinentForZone`; **Blackrock Mountain** still uses a **fallback** because that name is absent from `twow-zones`).
+- Client spelling may differ (`The Stockade` vs `Stockades`): see `DUNGEON_ZONE_TEXT_ALIASES` in `dungeons_registry.lua`.

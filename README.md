@@ -1,6 +1,8 @@
 # NPCTracker (WoW 1.12 + SuperWoW)
 
-Records **where you were on the world map** when you target/mouseover NPCs (position = **player** `GetPlayerMapPosition`), with **auto** and **manual** (`/npct record`) capture. Needs **SuperWoW** (creature `0xF130…` GUIDs). Merges **cast spell** and **aura** spell ids per **npc template id** into a second table.
+Records **where you were on the world map** when you target/mouseover NPCs (position = **player** `GetPlayerMapPosition`), with **auto** and **manual** (`/npct record`) capture. Needs **SuperWoW** (creature `0xF130…` GUIDs). **Dungeons/instances** resolve **continent** via `dungeons_registry.lua` (`twow-dungeons`). Merges **cast spell** and **aura** spell ids per **npc template id** into a second table.
+
+**Map pins** for the current zone are **off** until you tick “Show pins for this zone” in the `/npct` panel.
 
 **Install:** put the add-on folder here (path may vary with your client folder name):
 

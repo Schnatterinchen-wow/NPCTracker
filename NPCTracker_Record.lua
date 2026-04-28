@@ -131,8 +131,9 @@ local function playerMapPercent()
   return px * 100, py * 100
 end
 
---- Continent from registry (real zone name), else from map, else "Unknown".
+--- Continent: overworld zone (zones_registry), else dungeon instance -> associated zone (dungeons_registry), else map, else Unknown.
 --- Zone bucket: "Westfall" or "Westfall / Jangolode Mine" when minimap subzone differs.
+--- Returns optional dungeon meta when `rz` matches twow-dungeons (for parentZone + labels).
 local function resolveZoneContinent()
   local rz = GetRealZoneText()
   local mz = GetMinimapZoneText()
@@ -143,7 +144,11 @@ local function resolveZoneContinent()
   if mz and mz ~= "" and mz ~= rz then
     effectiveZone = rz .. " / " .. mz
   end
+  local dunMeta = TWOW_GetDungeonMetaForZoneText(rz)
   local cont = TWOW_ContinentForZone(rz)
+  if not cont and dunMeta then
+    cont = TWOW_ContinentForAssociatedZone(dunMeta.associatedZone)
+  end
   if not cont then
     local ci = GetCurrentMapContinent()
     if ci and ci > 0 then
@@ -153,7 +158,7 @@ local function resolveZoneContinent()
   if not cont then
     cont = "Unknown"
   end
-  return cont, effectiveZone, (mz and mz ~= "" and mz ~= rz) and mz or nil
+  return cont, effectiveZone, (mz and mz ~= "" and mz ~= rz) and mz or nil, dunMeta
 end
 
 local function buildEntry(unit, sourceTag, subzoneHint)
@@ -204,7 +209,7 @@ function NPCTracker_TryRecordUnit(unit, force, sourceTag)
     return false, "no name"
   end
 
-  local cont, zone, subHint = resolveZoneContinent()
+  local cont, zone, subHint, dunMeta = resolveZoneContinent()
   if not zone or zone == "" then
     return false, "no zone"
   end
@@ -215,6 +220,10 @@ function NPCTracker_TryRecordUnit(unit, force, sourceTag)
   end
   entry.continent = cont
   entry.zone = zone
+  if dunMeta then
+    entry.dungeon = dunMeta.name
+    entry.parentZone = dunMeta.associatedZone
+  end
 
   local guid = entry.guid
   local gkey = guid and NPCTracker_NormalizeGuidKey(guid) or nil
@@ -271,6 +280,7 @@ function NPCTracker_TryRecordUnit(unit, force, sourceTag)
       .. " in zone "
       .. zone
       .. (cont == "Unknown" and " |cffffcc00(continent Unknown)|r" or "")
+      .. (entry.dungeon and (" |cffaad4ff(dungeon: " .. entry.dungeon .. ", ref: " .. entry.parentZone .. ")|r") or "")
       .. " |cffffcc00(npc "
       .. entryId
       .. ")|r"
