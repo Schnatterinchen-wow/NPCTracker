@@ -28,7 +28,6 @@ end
 
 --- At most this many **auto** samples per (template id, spawn GUID); extra autos drop the oldest by `t`.
 local MAX_AUTO_SAMPLES_PER_GUID = 64
-
 --- Auto only: skip new row if spawn GUID is still in this many most recently auto-recorded distinct GUIDs.
 local AUTO_GUID_RING_MAX = 5
 
@@ -264,10 +263,6 @@ function NPCTracker_TryRecordUnit(unit, force, sourceTag)
     NPCTracker_Script_OnUnitRecorded(unit)
   end
 
-  if NPCTracker_Map and NPCTracker_Map.RefreshPins then
-    NPCTracker_Map.RefreshPins(true)
-  end
-
   local xr = math.floor(entry.x + 0.5)
   local yr = math.floor(entry.y + 0.5)
   DEFAULT_CHAT_FRAME:AddMessage(
@@ -360,7 +355,6 @@ function NPCTracker_AutoRecordSlash(msg)
 end
 
 --- Slash commands: assign SLASH_* and SlashCmdList together (1.12 binds /npct via SLASH_* globals).
---- Doing this in the last-loaded file avoids "unknown command" if an earlier file errored before SLASH_* ran.
 local function NPCTracker_SlashHandler(msg)
   local m = string.lower(msg or "")
   if m == "record" or m == "rec" then
@@ -371,11 +365,7 @@ local function NPCTracker_SlashHandler(msg)
     NPCTracker_AutoRecordSlash(m)
     return
   end
-  if NPCTracker_Map and NPCTracker_Map.HandleSlashMsg then
-    NPCTracker_Map.HandleSlashMsg(msg)
-  else
-    DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccNPCTracker|r: map module failed to load — check for Lua errors.")
-  end
+  DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccNPCTracker|r commands: /npct record, /npct autorecord [on|off|mouseover on|mouseover off]")
 end
 
 SLASH_NPCTRACKER1 = "/npct"
