@@ -78,8 +78,7 @@ function MAP.IsZoneEnabled(cont, zone)
   MAP.EnsureMapSettings()
   if not cont or not zone then return false end
   local z = NPCTrackerMapSettings.zoneEnabled[cont]
-  if z and z[zone] == false then return false end
-  return true
+  return z and z[zone] == true
 end
 
 local function npcHiddenForZone(cont, zone, name)
@@ -228,10 +227,15 @@ local function drawObservationPins(cont, zone, npc, data)
       if e.zone then
         sub = sub .. " @ " .. e.zone
       end
+      if e.displayId then
+        sub = sub .. " | display " .. tostring(e.displayId)
+      end
+      if e.dungeon and e.parentZone then
+        sub = sub .. " | " .. tostring(e.dungeon) .. " (ref " .. tostring(e.parentZone) .. ")"
+      end
       if e.classification then
         sub = sub .. " | " .. tostring(e.classification)
       end
-      showPin(e.x, e.y, COLOR_OBS[1], COLOR_OBS[2], COLOR_OBS[3], npc, sub)
     end
   end
 end
@@ -328,7 +332,7 @@ function MAP.PrintChecklist()
   local lines = {
     "/npct help — print this checklist in chat (same text as the panel Checklist button).",
     "Open the world map (M) so pins can refresh on the detail frame.",
-    "/npct — toggle the panel; use the zone master toggle and per-NPC boxes.",
+    "/npct — toggle the panel; check “Show pins for this zone” (off by default until you enable it) and per-NPC boxes.",
     "Gold pins = your observations (zone label in tooltip when stored per sample). SuperWoW creature GUID required.",
     "/npct record (macro) — saves target or mouseover (creature 0xF130… GUID only).",
     "/npct patrol (alias /npct pat) — record up to 5 patrol points per spawn GUID (FIFO, 6th drops oldest); /npct patrol clear wipes the spawn's patrol path.",

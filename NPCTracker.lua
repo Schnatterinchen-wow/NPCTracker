@@ -9,14 +9,6 @@ NPCTrackerObservationDB = NPCTrackerObservationDB or {
   autoRecordLastFiveGuids = {},
 }
 
--- Declared in .toc as SavedVariables; init here so it exists before NPCTracker_Map.lua loads.
--- NPCTracker_Map.lua calls MAP.EnsureMapSettings() when the UI loads.
-NPCTrackerMapSettings = NPCTrackerMapSettings or {
-  zoneEnabled = {},
-  npcEnabled = {},
-  panelPoint = nil,
-}
-
 -- Spells/auras keyed by creature template id only (no per-spawn GUID in this table).
 NPCTrackerScriptDB = NPCTrackerScriptDB or {
   -- [npcEntry] = { spells = { id, ... max 20 }, auras = { id, ... max 8 } }
