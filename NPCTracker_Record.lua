@@ -32,6 +32,9 @@ local MAX_AUTO_SAMPLES_PER_GUID = 64
 --- Auto only: skip new row if spawn GUID is still in this many most recently auto-recorded distinct GUIDs.
 local AUTO_GUID_RING_MAX = 5
 
+--- Up to this many **patrol** samples per (template id, spawn GUID); 6th drops oldest patrol by `t` (FIFO).
+local MAX_PATROL_SAMPLES_PER_GUID = 5
+
 local function stripPreviousManualSamples(entries)
   if not entries or type(entries) ~= "table" then
     return
@@ -71,6 +74,58 @@ local function tryDropOldestAutoSample(entries)
   end
   table.remove(entries, bestI)
   return true
+end
+
+--- Return true if one oldest `source == "patrol"` row was removed to make room.
+local function tryDropOldestPatrolSample(entries)
+  if not entries or type(entries) ~= "table" then
+    return false
+  end
+  local bestI, bestT
+  for i = 1, table.getn(entries) do
+    local e = entries[i]
+    if type(e) == "table" and e.source == "patrol" and type(e.t) == "number" then
+      if not bestT or e.t < bestT then
+        bestT = e.t
+        bestI = i
+      end
+    end
+  end
+  if not bestI then
+    return false
+  end
+  table.remove(entries, bestI)
+  return true
+end
+
+local function countPatrolSamples(entries)
+  if not entries or type(entries) ~= "table" then
+    return 0
+  end
+  local n = 0
+  for i = 1, table.getn(entries) do
+    local e = entries[i]
+    if type(e) == "table" and e.source == "patrol" then
+      n = n + 1
+    end
+  end
+  return n
+end
+
+--- Remove every `source == "patrol"` row from `entries`. Returns the number removed.
+local function stripPatrolSamples(entries)
+  if not entries or type(entries) ~= "table" then
+    return 0
+  end
+  local removed = 0
+  for i = table.getn(entries), 1, -1 do
+    local e = entries[i]
+    if type(e) == "table" and e.source == "patrol" then
+      table.remove(entries, i)
+      removed = removed + 1
+    end
+  end
+  return removed
 end
 
 local function ensureAutoSettings()
@@ -238,6 +293,12 @@ function NPCTracker_TryRecordUnit(unit, force, sourceTag)
   local entries = ensureObsByEntry(entryId, gkey, name)
   if force and (sourceTag == "manual" or sourceTag == "rec") then
     stripPreviousManualSamples(entries)
+  elseif force and sourceTag == "patrol" then
+    while countPatrolSamples(entries) >= MAX_PATROL_SAMPLES_PER_GUID do
+      if not tryDropOldestPatrolSample(entries) then
+        break
+      end
+    end
   end
   while table.getn(entries) >= MAX_AUTO_SAMPLES_PER_GUID do
     if not tryDropOldestAutoSample(entries) then
@@ -287,6 +348,64 @@ function NPCTracker_ManualRecord()
   end
   DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccNPCTracker|r: no target or mouseover to record.")
   return false
+end
+
+function NPCTracker_PatrolRecord()
+  if UnitExists("target") then
+    return NPCTracker_TryRecordUnit("target", true, "patrol")
+  end
+  if UnitExists("mouseover") then
+    return NPCTracker_TryRecordUnit("mouseover", true, "patrol")
+  end
+  DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccNPCTracker|r: no target or mouseover to record patrol point.")
+  return false
+end
+
+--- Wipes all `source == "patrol"` rows for the targeted unit's spawn GUID.
+function NPCTracker_PatrolClear()
+  local unit
+  if UnitExists("target") then
+    unit = "target"
+  elseif UnitExists("mouseover") then
+    unit = "mouseover"
+  end
+  if not unit then
+    DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccNPCTracker|r: no target or mouseover to clear patrol for.")
+    return false
+  end
+  local guid = NPCTracker_UnitGuid(unit)
+  local gkey = guid and NPCTracker_NormalizeGuidKey(guid) or nil
+  local entryId = guid and NPCTracker_CreatureEntryFromGuid(guid) or nil
+  if not (entryId and entryId > 0 and gkey and NPCTracker_IsCreatureNpcGuid(guid)) then
+    DEFAULT_CHAT_FRAME:AddMessage(
+      "|cff33ffccNPCTracker|r requires a SuperWoW creature GUID (0xF130…). Target a valid NPC and retry."
+    )
+    return false
+  end
+  local db = NPCTrackerObservationDB
+  local block = db
+    and db.observationsByEntry
+    and db.observationsByEntry[entryId]
+    or nil
+  local entries = block and block.entries and block.entries[gkey] or nil
+  if not entries then
+    DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccNPCTracker|r: no stored samples for this spawn yet.")
+    return false
+  end
+  local removed = stripPatrolSamples(entries)
+  DEFAULT_CHAT_FRAME:AddMessage(
+    "|cff33ffccNPCTracker|r cleared "
+      .. removed
+      .. " patrol point(s) for "
+      .. (block.npcName or ("#" .. entryId))
+      .. " |cffffcc00(npc "
+      .. entryId
+      .. ")|r"
+  )
+  if NPCTracker_Map and NPCTracker_Map.RefreshPins then
+    NPCTracker_Map.RefreshPins(true)
+  end
+  return true
 end
 
 local function autoRecordUnit(unit)
@@ -355,6 +474,14 @@ local function NPCTracker_SlashHandler(msg)
   local m = string.lower(msg or "")
   if m == "record" or m == "rec" then
     NPCTracker_ManualRecord()
+    return
+  end
+  if m == "patrol" or m == "pat" then
+    NPCTracker_PatrolRecord()
+    return
+  end
+  if m == "patrol clear" or m == "pat clear" then
+    NPCTracker_PatrolClear()
     return
   end
   if string.find(m, "^autorecord") then

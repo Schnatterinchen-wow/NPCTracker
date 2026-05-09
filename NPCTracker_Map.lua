@@ -331,6 +331,7 @@ function MAP.PrintChecklist()
     "/npct — toggle the panel; use the zone master toggle and per-NPC boxes.",
     "Gold pins = your observations (zone label in tooltip when stored per sample). SuperWoW creature GUID required.",
     "/npct record (macro) — saves target or mouseover (creature 0xF130… GUID only).",
+    "/npct patrol (alias /npct pat) — record up to 5 patrol points per spawn GUID (FIFO, 6th drops oldest); /npct patrol clear wipes the spawn's patrol path.",
     "/npct autorecord — on/off, mouseover on/off (auto skips re-hover of the same spawn GUID while it stays in a 5-GUID MRU ring; /npct record always saves).",
     "New or unlisted Turtle zones: continent falls back to the map or “Unknown”; your samples are still saved.",
     "Caves/interiors: when the minimap subzone differs from the zone name, storage uses “Zone / Subzone”.",

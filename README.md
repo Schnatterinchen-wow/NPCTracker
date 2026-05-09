@@ -1,6 +1,6 @@
 # NPCTracker (WoW 1.12 + SuperWoW)
 
-Records **where you were on the world map** when you target/mouseover NPCs (position = **player** `GetPlayerMapPosition`), with **auto** and **manual** (`/npct record`) capture. Needs **SuperWoW** (creature `0xF130…` GUIDs). Merges **cast spell** and **aura** spell ids per **npc template id** into a second table.
+Records **where you were on the world map** when you target/mouseover NPCs (position = **player** `GetPlayerMapPosition`), with **auto**, **manual** (`/npct record`) and **patrol** (`/npct patrol`) capture. Needs **SuperWoW** (creature `0xF130…` GUIDs). Merges **cast spell** and **aura** spell ids per **npc template id** into a second table.
 
 **Install:** put the add-on folder here (path may vary with your client folder name):
 
@@ -13,6 +13,8 @@ Records **where you were on the world map** when you target/mouseover NPCs (posi
 **In-game (main):**  
 `/npct` — map panel and pins.  
 `/npct record` or `/npct rec` — manual sample (target, else mouseover).  
+`/npct patrol` or `/npct pat` — patrol sample (target, else mouseover); up to 5 per spawn GUID, FIFO.  
+`/npct patrol clear` — wipe all stored patrol points for the targeted spawn GUID.  
 `/npctracker` — same as `/npct`.  
 Other: `/npct help`, `/npct pins`, `/npct autorecord`, `/npct prune`. **Field list, GUID → entry id, caps:** **NPCTracker-Data.md**.
 

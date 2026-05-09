@@ -16,6 +16,7 @@ One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below). 
 |------|--------|
 | Observations per **(entry id, spawn GUID string)** | Up to **64** rows; auto adds until full (old auto rows can be dropped; manual rows replace other manuals only for that GUID). Tuned in `NPCTracker_Record.lua` (`MAX_AUTO_SAMPLES_PER_GUID`). |
 | **Auto** re-hover / re-target spam | **`autoRecordLastFiveGuids`** — MRU list of up to **5** normalized spawn GUID keys. If the current unit’s GUID is already in this list, **auto** does not append another row (silent). A GUID leaves the list after **5 other distinct** GUIDs have been auto-recorded. **`/npct record` ignores this** and does not update the ring. `AUTO_GUID_RING_MAX` in `NPCTracker_Record.lua`. |
+| **Patrol** samples per **(entry id, spawn GUID string)** | Up to **5** rows with `source = "patrol"`; on the 6th the oldest patrol row is dropped (FIFO by `t`). Auto/manual rows are not touched. `MAX_PATROL_SAMPLES_PER_GUID` in `NPCTracker_Record.lua`. `/npct patrol clear` removes every patrol row for the targeted spawn. |
 | `spells` per entry id in `NPCTrackerScriptDB` | **20** first-seen unique cast spell ids (then further ids ignored). `NPCTracker_Script.lua` `MAX_SPELLS`. |
 | `auras` per entry id | **8** first-seen unique aura spell ids. `MAX_AURAS`. |
 
@@ -35,7 +36,7 @@ One file: `WTF\Account\<ACCOUNT>\SavedVariables\NPCTracker.lua` (tables below). 
 | `continent` | String, e.g. `Eastern Kingdoms`, `Kalimdor`, or `Unknown`. |
 | `zone` | Zone bucket: `GetRealZoneText()`, with ` " / " ` + `GetMinimapZoneText()` if subzone differs. |
 | `subzone` | Minimap subzone when it differed from real zone; else omitted. |
-| `source` | `"auto"` or `"manual"`. |
+| `source` | `"auto"`, `"manual"`, or `"patrol"`. Recorded by `/npct record` for `manual` and `/npct patrol` for `patrol`. |
 | `level` | `UnitLevel` |
 | `reaction` | `UnitReaction` vs player |
 | `classification` | `UnitClassification` when present: `"normal"`, `"elite"`, `"rare"`, `"rareelite"`, `"worldboss"`, `"trivial"`, `"minus"`, etc. Omitted if the API is missing or returns empty. |
